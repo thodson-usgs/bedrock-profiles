@@ -6,7 +6,7 @@
   "plugins": [
     {
       "name": "bedrock-profiles",
-      "source": ".",
+      "source": ".claude-plugin",
       "description": "Set up Claude Code with tagged AWS Bedrock inference profiles for cost attribution"
     }
   ]
