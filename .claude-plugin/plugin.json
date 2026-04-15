@@ -1,7 +1,7 @@
 {
   "name": "bedrock-profiles",
   "description": "Set up Claude Code with tagged AWS Bedrock inference profiles for cost attribution",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "author": {
     "name": "thodson-usgs"
   },
