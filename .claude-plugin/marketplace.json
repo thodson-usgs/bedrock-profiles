@@ -6,7 +6,10 @@
   "plugins": [
     {
       "name": "bedrock-profiles",
-      "source": ".claude-plugin",
+      "source": {
+        "source": "url",
+        "url": "https://github.com/thodson-usgs/bedrock-profiles.git"
+      },
       "description": "Set up Claude Code with tagged AWS Bedrock inference profiles for cost attribution"
     }
   ]
