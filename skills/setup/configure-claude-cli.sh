@@ -13,7 +13,7 @@ set -euo pipefail
 # foundation model.
 #
 # Prerequisites:
-#   - AWS CLI v2 with a valid SSO session (aws sso login)
+#   - AWS CLI v2 with credentials configured (SSO, env vars, instance role, etc.)
 #   - jq
 #   - Inference profiles already created (see create-bedrock-profiles.sh)
 #
@@ -21,11 +21,9 @@ set -euo pipefail
 #   ./configure-claude-cli.sh --project-id uncertainty_ts
 ###############################################################################
 
-# ── Defaults ──────────────────────────────────────────────────────────────────
 AWS_REGION="${AWS_REGION:-us-west-2}"
 PROJECT_ID=""
 
-# ── Parse arguments ───────────────────────────────────────────────────────────
 usage() {
   cat <<EOF
 Usage: $(basename "$0") [OPTIONS]
@@ -54,11 +52,10 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [[ -z "$PROJECT_ID" ]]; then
-  echo "Error: --project-id is required."
-  usage
+  read -r -p "Project ID (wma:project_id, e.g. uncertainty_ts): " PROJECT_ID
+  [[ -z "$PROJECT_ID" ]] && { echo "Error: project ID is required." >&2; exit 1; }
 fi
 
-# ── Preflight checks ─────────────────────────────────────────────────────────
 for cmd in aws jq; do
   if ! command -v "$cmd" &>/dev/null; then
     echo "Error: '$cmd' is required but not found in PATH." >&2
@@ -67,11 +64,12 @@ for cmd in aws jq; do
 done
 
 aws sts get-caller-identity &>/dev/null || {
-  echo "Error: unable to get AWS identity. Run 'aws sso login' first." >&2
+  echo "Error: no active AWS credentials found." >&2
+  echo "Configure credentials via SSO (aws sso login), environment variables," >&2
+  echo "a named profile (AWS_PROFILE), or an instance role." >&2
   exit 1
 }
 
-# ── Discover application inference profiles for this project ──────────────────
 echo "Searching for inference profiles matching project '$PROJECT_ID'..."
 
 ALL_PROFILES=$(aws bedrock list-inference-profiles \
@@ -89,11 +87,6 @@ if [ "$PROFILE_COUNT" -eq 0 ]; then
   exit 1
 fi
 echo "Found $PROFILE_COUNT profile(s)."
-
-# ── Map profiles to Claude Code tiers ─────────────────────────────────────────
-# Use a jq object to accumulate tier -> {arn, friendly} mappings.
-# For each profile, inspect the underlying foundation model to determine the
-# tier (opus/sonnet/haiku) and derive a friendly display name.
 
 TIER_MAP=$(echo "$PROJECT_PROFILES" | jq -c '
   reduce .[] as $p ({};
@@ -125,7 +118,6 @@ if [ "$MATCHED" -eq 0 ]; then
   exit 1
 fi
 
-# Print what was found
 for TIER in OPUS SONNET HAIKU; do
   ARN=$(echo "$TIER_MAP" | jq -r --arg t "$TIER" '.[$t].arn // empty')
   NAME=$(echo "$TIER_MAP" | jq -r --arg t "$TIER" '.[$t].name // empty')
@@ -134,7 +126,6 @@ for TIER in OPUS SONNET HAIKU; do
   fi
 done
 
-# ── Update ~/.claude/settings.json ────────────────────────────────────────────
 SETTINGS_FILE="$HOME/.claude/settings.json"
 echo ""
 
@@ -143,7 +134,6 @@ if [ ! -f "$SETTINGS_FILE" ]; then
   echo '{}' > "$SETTINGS_FILE"
 fi
 
-# Build env vars from the tier map
 ENV_JSON=$(echo "$TIER_MAP" | jq -c --arg pid "$PROJECT_ID" '
   {"CLAUDE_CODE_USE_BEDROCK": "1"} +
   (to_entries | reduce .[] as $e ({};
@@ -155,7 +145,6 @@ ENV_JSON=$(echo "$TIER_MAP" | jq -c --arg pid "$PROJECT_ID" '
   ))
 ')
 
-# Check for existing model env vars that would be overwritten
 EXISTING_ENV=$(jq -r '.env // {} | keys[]' "$SETTINGS_FILE" 2>/dev/null)
 CONFLICTS=""
 for KEY in $(echo "$ENV_JSON" | jq -r 'keys[]'); do
@@ -180,7 +169,6 @@ if [ -n "$CONFLICTS" ]; then
   fi
 fi
 
-# Merge into existing settings, preserving other fields
 TEMP_FILE=$(mktemp)
 jq --argjson new_env "$ENV_JSON" '.env = ((.env // {}) + $new_env)' "$SETTINGS_FILE" > "$TEMP_FILE"
 mv "$TEMP_FILE" "$SETTINGS_FILE"

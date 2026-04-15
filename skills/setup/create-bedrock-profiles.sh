@@ -9,7 +9,7 @@ set -euo pipefail
 # profiles are skipped).
 #
 # Prerequisites:
-#   - AWS CLI v2 with a valid SSO session (aws sso login)
+#   - AWS CLI v2 with credentials configured (SSO, env vars, instance role, etc.)
 #   - jq
 #
 # Usage:
@@ -19,7 +19,6 @@ set -euo pipefail
 #       --contact     thodson@usgs.gov
 ###############################################################################
 
-# ── Models to create profiles for ─────────────────────────────────────────────
 # Edit this list when new Claude models are released or old ones are retired.
 # Each entry is a Bedrock system inference profile ID (us.anthropic.claude-*).
 MODELS=(
@@ -28,13 +27,11 @@ MODELS=(
   us.anthropic.claude-haiku-4-5-20251001-v1:0
 )
 
-# ── Defaults ──────────────────────────────────────────────────────────────────
 AWS_REGION="${AWS_REGION:-us-west-2}"
 PROJECT_ID=""
 APP_ID=""
 CONTACT=""
 
-# ── Parse arguments ───────────────────────────────────────────────────────────
 usage() {
   cat <<EOF
 Usage: $(basename "$0") [OPTIONS]
@@ -66,12 +63,19 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-if [[ -z "$PROJECT_ID" || -z "$APP_ID" || -z "$CONTACT" ]]; then
-  echo "Error: --project-id, --app-id, and --contact are required."
-  usage
+if [[ -z "$PROJECT_ID" ]]; then
+  read -r -p "Project ID (wma:project_id, e.g. uncertainty_ts): " PROJECT_ID
+  [[ -z "$PROJECT_ID" ]] && { echo "Error: project ID is required." >&2; exit 1; }
+fi
+if [[ -z "$APP_ID" ]]; then
+  read -r -p "Application ID (wma:application_id, e.g. claude): " APP_ID
+  [[ -z "$APP_ID" ]] && { echo "Error: application ID is required." >&2; exit 1; }
+fi
+if [[ -z "$CONTACT" ]]; then
+  read -r -p "Contact email (wma:contact, e.g. user@usgs.gov): " CONTACT
+  [[ -z "$CONTACT" ]] && { echo "Error: contact email is required." >&2; exit 1; }
 fi
 
-# ── Preflight checks ─────────────────────────────────────────────────────────
 for cmd in aws jq; do
   if ! command -v "$cmd" &>/dev/null; then
     echo "Error: '$cmd' is required but not found in PATH." >&2
@@ -80,12 +84,13 @@ for cmd in aws jq; do
 done
 
 ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text 2>/dev/null) || {
-  echo "Error: unable to get AWS identity. Run 'aws sso login' first." >&2
+  echo "Error: no active AWS credentials found." >&2
+  echo "Configure credentials via SSO (aws sso login), environment variables," >&2
+  echo "a named profile (AWS_PROFILE), or an instance role." >&2
   exit 1
 }
 echo "AWS Account: $ACCOUNT_ID  Region: $AWS_REGION"
 
-# ── Validate selected models exist ────────────────────────────────────────────
 echo ""
 echo "Validating ${#MODELS[@]} model(s)..."
 
@@ -103,14 +108,12 @@ for SYSTEM_ID in "${MODELS[@]}"; do
 done
 echo "All models validated."
 
-# ── Discover existing application profiles ────────────────────────────────────
 EXISTING_PROFILES=$(aws bedrock list-inference-profiles \
   --type-equals APPLICATION \
   --region "$AWS_REGION" \
   --query 'inferenceProfileSummaries[].inferenceProfileName' \
   --output json)
 
-# ── Create application inference profiles ─────────────────────────────────────
 echo ""
 TAGS=$(jq -nc \
   --arg pid "$PROJECT_ID" \
