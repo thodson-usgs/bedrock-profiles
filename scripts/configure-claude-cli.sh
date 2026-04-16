@@ -52,7 +52,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [[ -z "$PROJECT_ID" ]]; then
-  read -r -p "Project ID (wma:project_id, e.g. uncertainty_ts): " PROJECT_ID
+  read -r -p "Project ID (wma:project_id, e.g. uncertainty_ts): " PROJECT_ID </dev/tty
   [[ -z "$PROJECT_ID" ]] && { echo "Error: project ID is required." >&2; exit 1; }
 fi
 
@@ -162,7 +162,7 @@ if [ -n "$CONFLICTS" ]; then
   echo ""
   printf "$CONFLICTS"
   echo ""
-  read -r -p "Continue? [y/N] " REPLY
+  read -r -p "Continue? [y/N] " REPLY </dev/tty
   if [[ ! "$REPLY" =~ ^[Yy]$ ]]; then
     echo "Aborted."
     exit 0

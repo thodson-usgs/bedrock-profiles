@@ -64,15 +64,15 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [[ -z "$PROJECT_ID" ]]; then
-  read -r -p "Project ID (wma:project_id, e.g. uncertainty_ts): " PROJECT_ID
+  read -r -p "Project ID (wma:project_id, e.g. uncertainty_ts): " PROJECT_ID </dev/tty
   [[ -z "$PROJECT_ID" ]] && { echo "Error: project ID is required." >&2; exit 1; }
 fi
 if [[ -z "$APP_ID" ]]; then
-  read -r -p "Application ID (wma:application_id, e.g. claude): " APP_ID
+  read -r -p "Application ID (wma:application_id, e.g. claude): " APP_ID </dev/tty
   [[ -z "$APP_ID" ]] && { echo "Error: application ID is required." >&2; exit 1; }
 fi
 if [[ -z "$CONTACT" ]]; then
-  read -r -p "Contact email (wma:contact, e.g. user@usgs.gov): " CONTACT
+  read -r -p "Contact email (wma:contact, e.g. user@usgs.gov): " CONTACT </dev/tty
   [[ -z "$CONTACT" ]] && { echo "Error: contact email is required." >&2; exit 1; }
 fi
 
