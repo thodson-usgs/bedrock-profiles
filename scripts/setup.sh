@@ -74,7 +74,7 @@ ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text 2>/dev/nu
 echo "AWS account: $ACCOUNT_ID  region: $AWS_REGION"
 
 if [[ -z "$PROJECT_ID" ]]; then
-  read -r -p "Project ID (wma:project_id, e.g. uncertainty_ts): " PROJECT_ID </dev/tty
+  read -r -p "Project ID (wma:project_id, e.g. uncertainty_ts): " PROJECT_ID
   [[ -z "$PROJECT_ID" ]] && { echo "Error: project ID is required." >&2; exit 1; }
 fi
 
