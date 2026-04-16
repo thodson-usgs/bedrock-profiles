@@ -104,11 +104,11 @@ The same scripts the skills use can be run directly for automation or CI:
 
 ```bash
 # Create inference profiles (once per project)
-bash skills/setup/create-bedrock-profiles.sh \
+bash scripts/create-bedrock-profiles.sh \
     --project-id my_project --app-id claude --contact user@example.com
 
 # Configure Claude Code (each developer)
-bash skills/setup/configure-claude-cli.sh \
+bash scripts/configure-claude-cli.sh \
     --project-id my_project
 ```
 
@@ -116,4 +116,4 @@ Both accept `--region` (default: `us-west-2`). Run with `--help` for full usage.
 
 ## Updating models
 
-Edit the `MODELS` array at the top of `skills/setup/create-bedrock-profiles.sh`, then re-run the skill or scripts.
+Edit the `MODELS` array at the top of `scripts/create-bedrock-profiles.sh`, then re-run the skill or scripts.
